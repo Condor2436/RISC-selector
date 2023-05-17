@@ -28,7 +28,9 @@ OriginCheckerTest.java
 
 DestinationChecker.java
 
-DestinationCheckerTest.java
+DestinationCheckerTest.java: the private method will never return null but it has to have a final return at the end, this makes the code coverage is not 100%, there is 1 line cannot be covered.
+
+---
 
 - Modify:
 
