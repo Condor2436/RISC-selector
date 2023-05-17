@@ -26,6 +26,10 @@ OriginChecker.java
 
 OriginCheckerTest.java
 
+DestinationChecker.java
+
+DestinationCheckerTest.java
+
 - Modify:
 
 Units.java: add feature to compare two Units objects
