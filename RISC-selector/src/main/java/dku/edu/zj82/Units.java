@@ -18,10 +18,7 @@ public class Units {
         this.nums = nums;
     }
     public boolean checkEnoughUnit(Units units){
-        if(units.getNums()>this.nums){
-            return false;
-        }
-        return true;
+        return units.getNums() <= this.nums;
     }
 
     @Override
