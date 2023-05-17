@@ -21,3 +21,13 @@ BehaviorListTest.java
 TerritoryTest.java
 
 UnitsTest.java
+
+OriginChecker.java
+
+OriginCheckerTest.java
+
+- Modify:
+
+Units.java: add feature to compare two Units objects
+
+UnitsTest.java: add test for the added feature
