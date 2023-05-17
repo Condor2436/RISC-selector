@@ -17,4 +17,15 @@ public class Units {
     public void setNums(int nums) {
         this.nums = nums;
     }
+    public boolean checkEnoughUnit(Units units){
+        if(units.getNums()>this.nums){
+            return false;
+        }
+        return true;
+    }
+
+    @Override
+    public String toString() {
+        return "Units{"+nums+"}";
+    }
 }
