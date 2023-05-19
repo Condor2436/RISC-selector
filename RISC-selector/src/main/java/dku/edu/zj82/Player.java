@@ -11,13 +11,11 @@ public class Player {
     private ArrayList<Integer> gamePortList;
     private int currentGame;
     private int userID;
-    private int status;//0 is offline, 1 is in lobby, 2 is in game
     private ArrayList<Integer> availableList;
     private String userName;
     public Player(int id, String name){
         this.userName = name;
         this.userID = id;
-        this.status = 0;
         this.availableList = new ArrayList<>();
         this.currentGame = -1;
         this.joinGameList = new ArrayList<>();
@@ -34,14 +32,6 @@ public class Player {
 
     public void setGamePortList(ArrayList<Integer> gamePortList) {
         this.gamePortList = gamePortList;
-    }
-
-    public int getStatus() {
-        return status;
-    }
-
-    public void setStatus(int status) {
-        this.status = status;
     }
 
     public ArrayList<Integer> getAvailableList() {

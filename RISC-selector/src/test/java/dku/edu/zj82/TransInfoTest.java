@@ -21,4 +21,15 @@ class TransInfoTest {
         TransInfo ti1 = new TransInfo("test", "test");
         assertEquals("test",ti1.getInfo());
     }
+
+    @Test
+    void getMuliInfo() {
+        TransInfo test = new TransInfo();
+        String message = "1 2 3 4 5";
+        String token[] = message.split(" ");
+        TransInfo test1 = new TransInfo("test1","test1",token);
+        test.setMuliInfo(token);
+        assertEquals(token,test.getMuliInfo());
+        assertEquals(token,test1.getMuliInfo());
+    }
 }

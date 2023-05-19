@@ -1,8 +1,9 @@
 package dku.edu.zj82;
 
 public class TransInfo {
-    public String type;
-    public String info;
+    private String type;
+    private String info;
+    private String[] muliInfo;
 
     public TransInfo() {
     }
@@ -10,6 +11,12 @@ public class TransInfo {
     public TransInfo(String type, String info) {
         this.type = type;
         this.info = info;
+    }
+
+    public TransInfo(String type, String info, String[] muliInfo) {
+        this.type = type;
+        this.info = info;
+        this.muliInfo = muliInfo;
     }
 
     public String getType() {
@@ -26,5 +33,13 @@ public class TransInfo {
 
     public void setInfo(String info) {
         this.info = info;
+    }
+
+    public String[] getMuliInfo() {
+        return muliInfo;
+    }
+
+    public void setMuliInfo(String[] muliInfo) {
+        this.muliInfo = muliInfo;
     }
 }

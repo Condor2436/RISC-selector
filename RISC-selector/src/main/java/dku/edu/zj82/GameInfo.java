@@ -183,6 +183,4 @@ public class GameInfo {
         socketChannel.write(buffer);
         this.listForOneTurn = new BehaviorList();
     }
-
-
 }
