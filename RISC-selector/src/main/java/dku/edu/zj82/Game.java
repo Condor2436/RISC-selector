@@ -398,8 +398,11 @@ public class Game implements Runnable {
         return attacker > defender;
     }
 
+    private void endGame() throws IOException {
+        this.thisChannel.close();
+    }
     @Override
     public void run() {
-
+// TODO: 2023/5/19 main game logic
     }
 }

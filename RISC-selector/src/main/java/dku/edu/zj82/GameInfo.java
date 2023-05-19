@@ -183,4 +183,5 @@ public class GameInfo {
         socketChannel.write(buffer);
         this.listForOneTurn = new BehaviorList();
     }
+    // TODO: 2023/5/19 generate test for gameInfo
 }
