@@ -27,4 +27,32 @@ class UnitsTest {
         Units u = new Units(15);
         assertEquals("Units{15}",u.toString());
     }
+
+    @Test
+    void addUnit() {
+        Units u = new Units(15);
+        u.addUnit();
+        assertEquals(16,u.getNums());
+    }
+
+    @Test
+    void testAddUnit() {
+        Units u = new Units(15);
+        u.addUnit(5);
+        assertEquals(20,u.getNums());
+    }
+
+    @Test
+    void testAddUnit1() {
+        Units u = new Units(15);
+        u.addUnit(new Units(15));
+        assertEquals(30,u.getNums());
+    }
+
+    @Test
+    void reduceUnit() {
+        Units u = new Units(15);
+        u.reduceUnit(new Units(10));
+        assertEquals(5,u.getNums());
+    }
 }

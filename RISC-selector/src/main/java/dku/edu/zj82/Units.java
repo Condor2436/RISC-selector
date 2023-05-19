@@ -21,6 +21,18 @@ public class Units {
         return units.getNums() <= this.nums;
     }
 
+    public void addUnit(){
+        this.nums++;
+    }
+    public void addUnit(int x){
+        this.nums+=x;
+    }
+    public void addUnit(Units u){
+        this.nums+=u.getNums();
+    }
+    public void reduceUnit(Units u){
+        this.nums -= u.getNums();
+    }
     @Override
     public String toString() {
         return "Units{"+nums+"}";

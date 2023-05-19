@@ -6,7 +6,7 @@ public class BehaviorList {
     private ArrayList<Behavior> moveList;
     private ArrayList<Behavior> attackList;
     private int playID;
-    public int status; // -1 means disconnect; 0 means dead; 1 means live
+    private int status; // -1 means disconnect; 0 means dead; 1 means live; 2 means win
 
     public BehaviorList(int playID, int status) {
         this.playID = playID;
