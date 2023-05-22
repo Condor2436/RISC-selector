@@ -12,7 +12,7 @@ import java.util.ArrayList;
 public class GameInfo {
     private int playerID;
     private int gameID;
-    private int status;
+    private int status; // 0: still alive, 1: dead, 2: watching
     private int totalNumOfPlayer;
     private boolean watchingPattern;
     private BehaviorList listForOneTurn;

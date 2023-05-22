@@ -30,6 +30,7 @@ public class Game implements Runnable {
     private final int START_UNIT = 50;
     private ArrayList<Behavior> attackList = new ArrayList<>();
     private ArrayList<Behavior> moveList = new ArrayList<>();
+    int[][] territoryOwner = new int[0][0];
 
     public Game(int port, int maxPlayerNum, int gameID, int serverPort) {
         this.playerChannelList = new HashMap<>();
@@ -59,20 +60,26 @@ public class Game implements Runnable {
         ByteBuffer messageBuffer = ByteBuffer.wrap(message.getBytes());
         client.write(messageBuffer);
         messageBuffer.clear();
+        System.out.println("Player " + (initPlayerID - 1) + " connected");
     }
 
     private void connectToServer() throws IOException {
         toServer = SocketChannel.open();
         toServer.configureBlocking(false);
         toServer.connect(new InetSocketAddress("localhost", serverPort));
+        boolean messagePrinted = false;
         while (!toServer.finishConnect()) {
-            System.out.println("Wait to connect to server");
+            if (!messagePrinted) {
+                System.out.println("Wait to connect to server");
+                messagePrinted = true;
+            }
         }
         System.out.println("Connected to server: " + toServer.getRemoteAddress());
     }
 
     private void getPlayerFromServer(String playerInfo) throws JsonProcessingException {
         Player p = objectMapper.readValue(playerInfo, Player.class);
+        p.changeGameStatus(0);
         playerList.put(p.getUserID(), p);
     }
 
@@ -222,12 +229,17 @@ public class Game implements Runnable {
             e.getValue().write(messageBuffer);
             messageBuffer.clear();
         }
-    }
+    }// multiple info delivery
 
-    private void handleReceivedBehaviorList(String behaviorList) throws JsonProcessingException {
+    private void handleReceivedBehaviorList(String behaviorList) throws IOException {
         BehaviorList current = objectMapper.readValue(behaviorList, BehaviorList.class);
-        this.moveList.addAll(current.getMoveList());
-        this.attackList.addAll(current.getAttackList());
+        if (current.getStatus()==1){//died and don't want to watch the rest game
+            playerChannelList.get(current.getPlayID()).close();
+            playerList.get(IDMap.get(current.getPlayID())).changeGameStatus(1);
+        } else{
+            this.moveList.addAll(current.getMoveList());
+            this.attackList.addAll(current.getAttackList());
+        }
     }
 
     private void checkAndExecuteBehavior() {
@@ -380,6 +392,7 @@ public class Game implements Runnable {
             }
         }
     }
+
     private void updateAllNeighbor(Territory t) {
         for (Territory territory : map) {
             for (Map.Entry<Integer, ArrayList<String>> e : territory.getNeighbor().entrySet()) {
@@ -398,11 +411,157 @@ public class Game implements Runnable {
         return attacker > defender;
     }
 
-    private void endGame() throws IOException {
-        this.thisChannel.close();
+    private void endTurnHandler() throws IOException {
+        checkAndExecuteBehavior();
+        unitNatureIncrease();
+        updatePlayerToServer();
+        refreshTurnMapAndAL();
+    }
+
+    private void gameStart() throws IOException {
+        initMap();
+        if (maxPlayerNum == 2) {
+            territoryOwner = new int[][]{{0, 1, 2, 3, 4}, {5, 6, 7, 8, 9}};
+        } else if (maxPlayerNum == 3) {
+            territoryOwner = new int[][]{{1, 2, 5}, {0, 3, 4}, {6, 7, 8}};
+        } else if (maxPlayerNum == 4) {
+            territoryOwner = new int[][]{{0, 1}, {2, 5}, {3, 4}, {6, 7}};
+        } else if (maxPlayerNum == 5) {
+            territoryOwner = new int[][]{{0, 1}, {2, 5}, {3, 4}, {6, 7}, {8, 9}};
+        }
+        for (int i = 0; i < maxPlayerNum; i++) {
+            TransInfo transInfo = new TransInfo("game start", String.valueOf(START_UNIT));
+            String message = objectMapper.writeValueAsString(transInfo);
+            playerChannelList.get(100000001 + i).write(ByteBuffer.wrap(message.getBytes()));
+        }
+    }
+
+    private void playerInitMap(String mapInfo, int[][] territoryOwner) {
+        String[] tokens = mapInfo.split(" ");   // id + init number(10 10 10 10 10)
+        for (int i = 1; i < tokens.length; i++) {
+            //noinspection DataFlowIssue
+            Territory temp = map.get(territoryOwner[Integer.parseInt(tokens[0]) - 100000001][i]);
+            temp.getUnits().setNums(Integer.parseInt(tokens[i]));
+            map.set(territoryOwner[Integer.parseInt(tokens[0]) - 100000001][i], temp);
+        }
+    }
+
+    private void savePlayerInfo() throws IOException {
+        while (playerList.size() != maxPlayerNum) {
+            ByteBuffer buffer = ByteBuffer.allocate(4096);
+            buffer.clear();
+            toServer.read(buffer);
+            buffer.flip();
+            String message = new String(buffer.array()).trim();
+            if (message.isEmpty()) {
+                continue;
+            }
+            System.out.println(message);
+            TransInfo receive = objectMapper.readValue(message, TransInfo.class);
+            if (receive.getType().equalsIgnoreCase("player info")) {
+                getPlayerFromServer(receive.getInfo());
+            }
+        }
+    }
+    private boolean isGameOver(boolean isStart) {
+        if(!isStart){
+            return false;
+        }
+        int ownID = 0;
+        for (Territory t : map) {
+            if (ownID == 0) {
+                ownID = t.getOwnID();
+            } else if (ownID != t.getOwnID() && t.getOwnID() != -1) {
+                return false;
+            }
+        }
+        return true;
+    }
+    private void gameOverMessageDelivery() throws IOException {
+        for (Map.Entry<Integer, SocketChannel> e : playerChannelList.entrySet()) {
+            TransInfo transInfo = new TransInfo();
+            transInfo.setType("game over");
+            if(e.getKey() == map.get(0).getOwnID()) {
+                transInfo.setInfo("You win");
+            } else {
+                transInfo.setInfo("You lose");
+            }
+            String message = objectMapper.writeValueAsString(transInfo);
+            ByteBuffer messageBuffer = ByteBuffer.wrap(message.getBytes());
+            e.getValue().write(messageBuffer);
+            messageBuffer.clear();
+        }
     }
     @Override
     public void run() {
-// TODO: 2023/5/19 main game logic
+        try {
+            selector = Selector.open();
+            connectToServer();
+            int messageCount = 0;
+            int connectedPLayer = 0;
+            boolean isStart = false;
+            savePlayerInfo();
+            openChannelToPlayer(selector);
+            while (!isGameOver(isStart)) {
+                selector.select();
+                Set<SelectionKey> keys = selector.selectedKeys();
+                Iterator<SelectionKey> iterator = keys.iterator();
+                while (iterator.hasNext()) {
+                    SelectionKey key = iterator.next();
+                    iterator.remove();
+                    if (key.isAcceptable()) {
+                        acceptPlayer(selector, key);
+                        connectedPLayer++;
+                    }
+                    if (key.isReadable()) {
+                        SocketChannel client = (SocketChannel) key.channel();
+                        ByteBuffer dataBuffer = ByteBuffer.allocate(4096);
+                        client.read(dataBuffer);
+                        dataBuffer.flip();
+                        String data = new String(dataBuffer.array()).trim();
+                        TransInfo curr = objectMapper.readValue(data, TransInfo.class);
+                        System.out.println("Received data from client: " + curr.getType() + ": " + curr.getInfo());
+
+                        if (curr.getType().equalsIgnoreCase("id info")) {// uid id
+                            updateIDMap(curr.getInfo());
+                        }
+                        if (curr.getType().equalsIgnoreCase("map init")) {
+                            String mapInfo = curr.getInfo();
+                            playerInitMap(mapInfo, territoryOwner);
+                            messageCount++;
+                            if (messageCount == maxPlayerNum) {
+                                messageCount = 0;
+                                turnStartMessageDelivery();
+                            }
+                        }
+                        if (curr.getType().equalsIgnoreCase("turn end")) {
+                            messageCount++;
+                            handleReceivedBehaviorList(curr.getInfo());
+                            if (messageCount == maxPlayerNum) {
+                                messageCount = 0;
+                                endTurnHandler();
+                                turnStartMessageDelivery();
+                            }
+                        }
+                    }
+                    if (connectedPLayer == maxPlayerNum && !isStart) {
+                        gameStart();
+                        isStart = true;
+                    }
+                }
+            }
+            if(isGameOver(isStart)) {
+                gameOverMessageDelivery();
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+        } finally {
+            try {
+                thisChannel.close();
+                toServer.close();
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        }
     }
 }

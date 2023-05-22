@@ -86,6 +86,9 @@ public class Player {
         gameInfoMap.put(gameInfo.getGameID()-10000,gameInfo);
         gameInfoMap.get(gameInfo.getGameID()-10000).connectToGame();
     }
+    public void changeGameStatus(int status){
+        gameInfoMap.get(currentGame).setStatus(status);
+    }
 
     // TODO: 2023/5/17 add unit test to all setter and getter, this should be done when github copilot is available
 
