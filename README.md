@@ -71,11 +71,18 @@ Game.java
  
 ---
 
+## 2023/05/22
+- create: 
+
+    Server.java
+
+- modify:
+
+    Game.java: finish game logic, wait for client
+
+    Player.java: add helper methods to switch game and disconnect from game
+    
 ### TODO:
-
-- game process related files
-
-- server process related files
 
 - client process related files
 ---
