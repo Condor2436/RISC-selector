@@ -17,16 +17,15 @@ public class Game implements Runnable {
     private HashMap<Integer, Player> playerList;// uid, player
     private HashMap<Integer, Integer> IDMap;// id to uid
     private ArrayList<Territory> map;
-    private int port;
+    private final int port;
     private ServerSocketChannel thisChannel;
-    private int maxPlayerNum;
-    private ObjectMapper objectMapper;
-    private BasicChecker ruleChecker;
-    private int gameID;
-    private Selector selector;
+    private final int maxPlayerNum;
+    private final ObjectMapper objectMapper;
+    private final BasicChecker ruleChecker;
+    private final int gameID;
     private int initPlayerID = 100000001;
     private SocketChannel toServer;
-    private int serverPort;
+    private final int serverPort;
     private final int START_UNIT = 50;
     private ArrayList<Behavior> attackList = new ArrayList<>();
     private ArrayList<Behavior> moveList = new ArrayList<>();
@@ -43,6 +42,9 @@ public class Game implements Runnable {
         this.objectMapper = new ObjectMapper();
         this.serverPort = serverPort;
         this.playerList = new HashMap<>();
+    }
+    public boolean isFull(){
+        return maxPlayerNum==IDMap.size();
     }
 
     private void acceptPlayer(Selector selector, SelectionKey key) throws IOException {
@@ -75,12 +77,15 @@ public class Game implements Runnable {
             }
         }
         System.out.println("Connected to server: " + toServer.getRemoteAddress());
+        sendToServer("game connect to server");
     }
 
     private void getPlayerFromServer(String playerInfo) throws JsonProcessingException {
         Player p = objectMapper.readValue(playerInfo, Player.class);
         p.changeGameStatus(0);
+        p.changeCurrentGame(gameID);
         playerList.put(p.getUserID(), p);
+        System.out.println("Receive player "+ p.getUserID()+" from server");
     }
 
     private void openChannelToPlayer(Selector selector) throws IOException {
@@ -95,10 +100,13 @@ public class Game implements Runnable {
         IDMap.put(Integer.parseInt(token[0]), Integer.parseInt(token[1]));
     }
 
-    private void updatePlayerToServer() throws IOException {
+    private void sendToServer(String type) throws IOException {
         TransInfo info = new TransInfo();
-        info.setType("update player");
+        info.setType(type);
         String message = objectMapper.writeValueAsString(playerList);
+        if(type.equalsIgnoreCase("game end")||type.equalsIgnoreCase("game connect to server")){
+            message = objectMapper.writeValueAsString(gameID);
+        }
         info.setInfo(message);
         message = objectMapper.writeValueAsString(info);
         ByteBuffer messageBuffer = ByteBuffer.wrap(message.getBytes());
@@ -233,10 +241,12 @@ public class Game implements Runnable {
 
     private void handleReceivedBehaviorList(String behaviorList) throws IOException {
         BehaviorList current = objectMapper.readValue(behaviorList, BehaviorList.class);
-        if (current.getStatus()==1){//died and don't want to watch the rest game
+        if (current.getStatus() == 1) {//died and don't want to watch the rest game
             playerChannelList.get(current.getPlayID()).close();
+            playerChannelList.remove(current.getPlayID());
             playerList.get(IDMap.get(current.getPlayID())).changeGameStatus(1);
-        } else{
+            playerList.remove(IDMap.get(current.getPlayID()));
+        } else {
             this.moveList.addAll(current.getMoveList());
             this.attackList.addAll(current.getAttackList());
         }
@@ -414,7 +424,7 @@ public class Game implements Runnable {
     private void endTurnHandler() throws IOException {
         checkAndExecuteBehavior();
         unitNatureIncrease();
-        updatePlayerToServer();
+        sendToServer("update player");
         refreshTurnMapAndAL();
     }
 
@@ -463,8 +473,9 @@ public class Game implements Runnable {
             }
         }
     }
+
     private boolean isGameOver(boolean isStart) {
-        if(!isStart){
+        if (!isStart) {
             return false;
         }
         int ownID = 0;
@@ -477,11 +488,12 @@ public class Game implements Runnable {
         }
         return true;
     }
+
     private void gameOverMessageDelivery() throws IOException {
         for (Map.Entry<Integer, SocketChannel> e : playerChannelList.entrySet()) {
             TransInfo transInfo = new TransInfo();
             transInfo.setType("game over");
-            if(e.getKey() == map.get(0).getOwnID()) {
+            if (e.getKey() == map.get(0).getOwnID()) {
                 transInfo.setInfo("You win");
             } else {
                 transInfo.setInfo("You lose");
@@ -492,10 +504,11 @@ public class Game implements Runnable {
             messageBuffer.clear();
         }
     }
+
     @Override
     public void run() {
         try {
-            selector = Selector.open();
+            Selector selector = Selector.open();
             connectToServer();
             int messageCount = 0;
             int connectedPLayer = 0;
@@ -550,7 +563,7 @@ public class Game implements Runnable {
                     }
                 }
             }
-            if(isGameOver(isStart)) {
+            if (isGameOver(true)) {
                 gameOverMessageDelivery();
             }
         } catch (IOException e) {
@@ -558,6 +571,7 @@ public class Game implements Runnable {
         } finally {
             try {
                 thisChannel.close();
+                sendToServer("game end");
                 toServer.close();
             } catch (IOException e) {
                 e.printStackTrace();

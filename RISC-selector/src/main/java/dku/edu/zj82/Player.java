@@ -90,6 +90,14 @@ public class Player {
         gameInfoMap.get(currentGame).setStatus(status);
     }
 
+    public void changeCurrentGame(int gameID) {
+        this.currentGame = gameID;
+    }
+    public void disconnectFromGame(int gameID){
+        gameInfoMap.remove(gameID);
+        joinGameList.remove(gameID);
+    }
+
     // TODO: 2023/5/17 add unit test to all setter and getter, this should be done when github copilot is available
 
 }
